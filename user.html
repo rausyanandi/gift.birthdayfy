@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Your Gift 🎁</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <style>
+        * { font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #fff9c4 100%);
+            min-height: 100vh;
+        }
+        .fade-in { animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .scale-in { animation: scaleIn 0.5s ease; }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        .float { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+        .glow { box-shadow: 0 0 40px rgba(236, 64, 122, 0.2); }
+        .photo-grid-img {
+            width: 100%; aspect-ratio: 1; object-fit: cover;
+            border-radius: 16px; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .photo-grid-img:hover { transform: scale(1.03); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        .heart-particle {
+            position: fixed; font-size: 24px; pointer-events: none;
+            animation: heartRise 4s ease-in forwards; z-index: 0;
+        }
+        @keyframes heartRise {
+            0% { transform: translateY(100vh) rotate(0deg) scale(0); opacity: 0; }
+            10% { opacity: 1; transform: translateY(90vh) rotate(36deg) scale(1); }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) rotate(720deg) scale(0.5); opacity: 0; }
+        }
+        .letter-card {
+            background: linear-gradient(145deg, #fff5f7, #fff);
+            border: 2px solid #fbcfe8;
+            box-shadow: 0 8px 32px rgba(236, 64, 122, 0.1);
+        }
+        .typewriter {
+            overflow: hidden;
+            white-space: pre-wrap;
+            animation: typewriter 1.5s steps(40) 0.5s 1 normal both;
+        }
+        @keyframes typewriter {
+            from { max-height: 0; opacity: 0; }
+            to { max-height: 1000px; opacity: 1; }
+        }
+        .lightbox {
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 2rem; cursor: pointer;
+        }
+        .lightbox img {
+            max-width: 90vw; max-height: 90vh;
+            border-radius: 16px; object-fit: contain;
+        }
+        .sparkle {
+            position: absolute; pointer-events: none;
+            font-size: 20px; animation: sparkleFade 0.8s ease forwards;
+        }
+        @keyframes sparkleFade {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            100% { transform: scale(1.5) rotate(180deg); opacity: 0; }
+        }
+        .bounce-in {
+            animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="p-4 relative overflow-x-hidden">
+    <!-- SPARKLE CONTAINER -->
+    <div id="sparkleContainer" class="fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- HEART PARTICLES CONTAINER -->
+    <div id="heartContainer" class="fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- INPUT SCREEN -->
+    <div id="inputScreen" class="flex items-center justify-center min-h-screen relative z-10">
+        <div class="text-center max-w-md mx-auto fade-in">
+            <div class="float mb-6">
+                <div class="text-7xl">🎁</div>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-pink-600 mb-2">You Have a Gift!</h1>
+            <p class="text-purple-500 mb-8">Enter your name to open your special gift</p>
+
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-xl">
+                <input type="text" id="userNameInput" placeholder="Enter your name..." class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none text-center text-lg mb-4" onkeydown="if(event.key==='Enter') openGift()">
+                <button onclick="openGift()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-[1.02] transition-all">
+                    🎈 Open My Gift
+                </button>
+            </div>
+
+            <div id="notFound" class="hidden mt-6 p-6 bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl">
+                <div class="text-5xl mb-3">😢</div>
+                <h3 class="text-lg font-bold text-gray-600">No Gift Found</h3>
+                <p class="text-gray-400 text-sm">Sorry, we couldn't find a gift for "<span id="notFoundName" class="font-semibold text-pink-400"></span>"</p>
+                <button onclick="resetUser()" class="mt-4 px-6 py-2 bg-pink-100 text-pink-500 rounded-xl hover:bg-pink-200 transition-all text-sm font-medium">Try again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GIFT SCREEN -->
+    <div id="giftScreen" class="hidden relative z-10 min-h-screen">
+        <!-- Hero Section -->
+        <div class="text-center py-12 md:py-20 fade-in">
+            <div class="text-6xl md:text-8xl mb-4 bounce-in">🎂</div>
+            <h1 class="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+                Happy Birthday!
+            </h1>
+            <h2 id="giftNameDisplay" class="text-3xl md:text-4xl font-bold text-pink-600 mt-2"></h2>
+            <p class="text-purple-400 mt-2">This gift is specially made for you 💕</p>
+        </div>
+
+        <div class="max-w-2xl mx-auto space-y-10 pb-20">
+            <!-- Photos Gallery -->
+            <div id="photoSection" class="hidden bg-white/60 backdrop-blur-sm rounded-3xl p-6 shadow-lg fade-in">
+                <h3 class="text-xl font-bold text-pink-600 mb-4">📸 Memories</h3>
+                <div id="photoGallery" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+            </div>
+
+            <!-- Spotify Player -->
+            <div id="spotifySection" class="hidden bg-white/60 backdrop-blur-sm rounded-3xl p-6 shadow-lg fade-in">
+                <h3 class="text-xl font-bold text-pink-600 mb-4">🎵 A Song For You</h3>
+                <div id="spotifyPlayer" class="rounded-xl overflow-hidden"></div>
+            </div>
+
+            <!-- Letter -->
+            <div id="letterSection" class="hidden fade-in">
+                <div class="letter-card rounded-3xl p-8 relative">
+                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 text-3xl">💌</div>
+                    <h3 class="text-xl font-bold text-pink-600 mb-4 text-center pt-2">A Letter For You</h3>
+                    <div id="letterDisplay" class="text-gray-600 leading-relaxed whitespace-pre-wrap text-lg typewriter"></div>
+                    <div class="mt-6 pt-4 border-t border-pink-100 text-right">
+                        <p class="text-pink-300 text-sm">With love 💕</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center text-pink-300 text-sm pb-8">
+                Made with <span class="text-red-400">❤️</span> especially for you
+            </div>
+        </div>
+    </div>
+
+    <!-- LIGHTBOX -->
+    <div id="lightbox" class="hidden lightbox" onclick="closeLightbox()">
+        <button onclick="event.stopPropagation(); closeLightbox()" class="absolute top-4 right-4 text-white text-3xl hover:text-pink-300 transition-colors z-10">✕</button>
+        <img id="lightboxImg" src="" alt="Enlarged photo">
+    </div>
+
+    <script>
+        // --- DATA LAYER ---
+        const STORAGE_KEY = 'birthdayfy_data';
+
+        function getData() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : { gifts: {} };
+        }
+
+        function findGift(name) {
+            if (!name) return null;
+            const data = getData();
+            const key = name.trim().toLowerCase();
+            return data.gifts[key] || null;
+        }
+
+        // --- SPOTIFY ---
+        function convertSpotifyUrl(url) {
+            if (!url) return null;
+            const m = url.match(/open\.spotify\.com\/(embed\/)?(track|playlist|album|episode)\/([a-zA-Z0-9]+)/);
+            if (m) return `https://open.spotify.com/embed/${m[2]}/${m[3]}`;
+            return null;
+        }
+
+        // --- USER FLOW ---
+        let currentGift = null;
+
+        function openGift() {
+            const name = document.getElementById('userNameInput').value.trim();
+            if (!name) {
+                document.getElementById('userNameInput').classList.add('border-red-300');
+                setTimeout(() => document.getElementById('userNameInput').classList.remove('border-red-300'), 1500);
+                return;
+            }
+
+            const gift = findGift(name);
+            if (!gift) {
+                document.getElementById('notFound').classList.remove('hidden');
+                document.getElementById('notFoundName').textContent = name;
+                return;
+            }
+
+            currentGift = gift;
+            showGift(gift);
+        }
+
+        function resetUser() {
+            document.getElementById('notFound').classList.add('hidden');
+            document.getElementById('userNameInput').value = '';
+            document.getElementById('userNameInput').focus();
+        }
+
+        function showGift(gift) {
+            document.getElementById('inputScreen').classList.add('hidden');
+            document.getElementById('giftScreen').classList.remove('hidden');
+
+            document.getElementById('giftNameDisplay').textContent = gift.name;
+
+            // Photos
+            const photoSection = document.getElementById('photoSection');
+            const gallery = document.getElementById('photoGallery');
+            gallery.innerHTML = '';
+
+            if (gift.photos && gift.photos.length > 0) {
+                gift.photos.forEach((photo, idx) => {
+                    const div = document.createElement('div');
+                    div.className = idx === 0 && gift.photos.length === 1 ? 'col-span-2 md:col-span-3' : '';
+                    const img = document.createElement('img');
+                    img.src = photo;
+                    img.className = 'photo-grid-img';
+                    img.loading = 'lazy';
+                    img.onclick = () => openLightbox(photo);
+                    div.appendChild(img);
+                    gallery.appendChild(div);
+                });
+                photoSection.classList.remove('hidden');
+            }
+
+            // Spotify
+            const spotifySection = document.getElementById('spotifySection');
+            const player = document.getElementById('spotifyPlayer');
+            if (gift.spotifyUrl) {
+                const embed = convertSpotifyUrl(gift.spotifyUrl);
+                if (embed) {
+                    player.innerHTML = `<iframe src="${embed}" width="100%" height="152" frameborder="0" allow="encrypted-media; clipboard-write" class="rounded-xl"></iframe>`;
+                    spotifySection.classList.remove('hidden');
+                } else {
+                    spotifySection.classList.add('hidden');
+                }
+            } else {
+                spotifySection.classList.add('hidden');
+            }
+
+            // Letter
+            const letterSection = document.getElementById('letterSection');
+            const letterDisplay = document.getElementById('letterDisplay');
+            if (gift.letter) {
+                letterDisplay.textContent = gift.letter;
+                letterSection.classList.remove('hidden');
+                // Reset typewriter animation
+                letterDisplay.style.animation = 'none';
+                setTimeout(() => { letterDisplay.style.animation = ''; }, 10);
+            } else {
+                letterSection.classList.add('hidden');
+            }
+
+            // Confetti
+            launchConfetti();
+
+            // Hearts
+            startHearts();
+
+            // Sparkles on mouse move
+            setupSparkles();
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- CONFETTI ---
+        function launchConfetti() {
+            const duration = 3000;
+            const end = Date.now() + duration;
+
+            function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0, y: 0.7 },
+                    colors: ['#f472b6', '#ec4899', '#a78bfa', '#fbbf24', '#34d399']
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1, y: 0.7 },
+                    colors: ['#f472b6', '#ec4899', '#a78bfa', '#fbbf24', '#34d399']
+                });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }
+            frame();
+
+            // Big burst
+            setTimeout(() => {
+                confetti({
+                    particleCount: 150,
+                    spread: 100,
+                    origin: { y: 0.6 },
+                    colors: ['#f472b6', '#ec4899', '#a78bfa', '#fbbf24', '#34d399', '#f87171']
+                });
+            }, 300);
+
+            setTimeout(() => {
+                confetti({
+                    particleCount: 100,
+                    spread: 120,
+                    origin: { y: 0.4 },
+                    colors: ['#f472b6', '#ec4899', '#a78bfa', '#fbbf24']
+                });
+            }, 1000);
+
+            setTimeout(() => {
+                confetti({
+                    particleCount: 80,
+                    spread: 160,
+                    origin: { y: 0.5 },
+                    colors: ['#f472b6', '#a78bfa', '#fbbf24']
+                });
+            }, 2000);
+        }
+
+        // --- HEARTS ---
+        let heartsInterval = null;
+
+        function startHearts() {
+            if (heartsInterval) clearInterval(heartsInterval);
+            const container = document.getElementById('heartContainer');
+            heartsInterval = setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.innerHTML = ['💕','💖','💗','💝','✨','🌸','🦋','🎀'][Math.floor(Math.random()*8)];
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.fontSize = (Math.random() * 24 + 16) + 'px';
+                heart.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 6000);
+            }, 400);
+        }
+
+        // --- SPARKLES ---
+        let sparkleActive = false;
+
+        function setupSparkles() {
+            if (sparkleActive) return;
+            sparkleActive = true;
+            const container = document.getElementById('sparkleContainer');
+            document.addEventListener('mousemove', (e) => {
+                if (document.getElementById('giftScreen').classList.contains('hidden')) return;
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.textContent = ['✨','💫','⭐','🌟'][Math.floor(Math.random()*4)];
+                sparkle.style.left = (e.clientX - 10) + 'px';
+                sparkle.style.top = (e.clientY - 10) + 'px';
+                container.appendChild(sparkle);
+                setTimeout(() => sparkle.remove(), 800);
+            });
+        }
+
+        // --- LIGHTBOX ---
+        function openLightbox(src) {
+            document.getElementById('lightboxImg').src = src;
+            document.getElementById('lightbox').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
+        });
+
+        // --- INIT ---
+        // Focus the input on load
+        document.getElementById('userNameInput').focus();
+    </script>
+</body>
+</html>

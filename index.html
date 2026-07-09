@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Gift Box 🎁</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #fff9c4 100%);
+            min-height: 100vh;
+        }
+        .float-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .heart {
+            position: fixed;
+            font-size: 24px;
+            animation: heartFloat 4s ease-in infinite;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes heartFloat {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+        .btn-admin {
+            background: linear-gradient(135deg, #f472b6, #ec4899);
+        }
+        .btn-user {
+            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 relative overflow-hidden">
+    <div id="hearts-container"></div>
+
+    <div class="text-center max-w-md mx-auto relative z-10">
+        <div class="float-animation mb-8">
+            <div class="text-8xl mb-2">🎁</div>
+            <div class="text-4xl">🎂</div>
+        </div>
+
+        <h1 class="text-4xl md:text-5xl font-bold text-pink-600 mb-3 drop-shadow-sm">Birthday Gift Box</h1>
+        <p class="text-lg text-purple-500 mb-10 font-light">Someone has prepared a special gift just for you...</p>
+
+        <div class="space-y-4">
+            <a href="admin.html" class="block w-full px-8 py-4 btn-admin text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-lg font-semibold tracking-wide">
+                🎀 I'm the Admin
+            </a>
+            <a href="user.html" class="block w-full px-8 py-4 btn-user text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-lg font-semibold tracking-wide">
+                🎈 I Have a Gift
+            </a>
+        </div>
+
+        <p class="mt-12 text-pink-300 text-sm">Made with <span class="text-red-400">❤️</span> for someone very special</p>
+    </div>
+
+    <script>
+        function createHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.innerHTML = ['💕','💖','💗','💝','✨','🦋','🌸'][Math.floor(Math.random()*7)];
+            heart.style.left = Math.random() * 100 + 'vw';
+            heart.style.fontSize = (Math.random() * 20 + 16) + 'px';
+            heart.style.animationDuration = (Math.random() * 3 + 3) + 's';
+            document.getElementById('hearts-container').appendChild(heart);
+            setTimeout(() => heart.remove(), 6000);
+        }
+        setInterval(createHeart, 500);
+    </script>
+</body>
+</html>

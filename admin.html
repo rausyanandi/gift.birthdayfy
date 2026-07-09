@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Birthday Gift Box</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Poppins', sans-serif; }
+        body { background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #fff9c4 100%); min-height: 100vh; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .gift-card { transition: all 0.3s ease; }
+        .gift-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(236, 64, 122, 0.15); }
+        .photo-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; }
+        .preview-thumb { width: 100px; height: 100px; object-fit: cover; border-radius: 12px; border: 2px solid #fbcfe8; }
+        .upload-area { border: 2px dashed #f9a8d4; border-radius: 16px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-area:hover { background: #fdf2f8; border-color: #f472b6; }
+    </style>
+</head>
+<body>
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 w-full max-w-sm text-center fade-in">
+            <div class="text-5xl mb-4">🔐</div>
+            <h2 class="text-2xl font-bold text-pink-600 mb-1">Admin Access</h2>
+            <p class="text-purple-400 text-sm mb-6">Enter password to manage gifts</p>
+            <input type="password" id="adminPassword" placeholder="Password" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none mb-4 text-center" onkeydown="if(event.key==='Enter') adminLogin()">
+            <button onclick="adminLogin()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all">✨ Login</button>
+            <p id="loginError" class="text-red-400 text-sm mt-3 hidden">Wrong password! Try again.</p>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden p-4 md:p-8 max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-pink-600">🎀 Admin Dashboard</h1>
+                <p class="text-purple-400 text-sm">Manage your birthday gifts</p>
+            </div>
+            <button onclick="adminLogout()" class="px-4 py-2 bg-white/70 rounded-xl text-pink-500 hover:bg-pink-50 transition-all shadow-sm border border-pink-200">🚪 Logout</button>
+        </div>
+
+
+        <!-- Create Gift Button -->
+        <button onclick="toggleForm()" id="showFormBtn" class="w-full mb-6 px-6 py-4 bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-[1.01] transition-all text-lg font-semibold">✨ Create New Gift</button>
+
+        <!-- Gift Form -->
+        <div id="giftForm" class="hidden bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 md:p-8 mb-8 fade-in">
+            <h2 id="formTitle" class="text-xl font-bold text-pink-600 mb-6">Create New Gift</h2>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-pink-500 font-medium mb-2">🎀 Recipient Name</label>
+                    <input type="text" id="recipientName" placeholder="e.g. Alice" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-pink-500 font-medium mb-2">📸 Photos <span class="text-gray-400 font-normal text-sm">(max 5)</span></label>
+                    <div class="upload-area" onclick="document.getElementById('photoInput').click()">
+                        <p class="text-pink-400 text-lg mb-1">📷 Click to upload photos</p>
+                        <p class="text-gray-400 text-sm">or drag and drop</p>
+                    </div>
+                    <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload(event)" class="hidden">
+                    <div id="photoPreviews" class="flex flex-wrap gap-3 mt-3"></div>
+                    <p id="photoCount" class="text-sm text-gray-400 mt-1">0 photos</p>
+                </div>
+
+                <div>
+                    <label class="block text-pink-500 font-medium mb-2">🎵 Spotify URL</label>
+                    <input type="url" id="spotifyUrl" placeholder="https://open.spotify.com/track/..." class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none" oninput="previewSpotify()">
+                    <div id="spotifyPreview" class="mt-3 hidden"></div>
+                </div>
+
+                <div>
+                    <label class="block text-pink-500 font-medium mb-2">💌 Letter</label>
+                    <textarea id="letterText" rows="6" placeholder="Write your heartfelt letter here..." class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none resize-none leading-relaxed"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button onclick="saveGift()" class="flex-1 py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">💾 Save Gift</button>
+                    <button onclick="toggleForm()" class="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-semibold hover:bg-gray-200 transition-all">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gift List -->
+        <div id="giftList">
+            <h2 class="text-lg font-semibold text-purple-500 mb-4">🎁 Your Gifts</h2>
+            <div id="giftCards" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div id="emptyState" class="text-center py-16 hidden">
+                <div class="text-6xl mb-4">🎀</div>
+                <p class="text-purple-400 text-xl font-medium">No gifts yet</p>
+                <p class="text-gray-400">Create your first gift above!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIRM MODAL -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div class="text-4xl mb-3">⚠️</div>
+            <h3 class="text-lg font-bold text-gray-700 mb-2">Delete Gift?</h3>
+            <p class="text-gray-500 mb-6" id="confirmMessage">Are you sure?</p>
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()" class="flex-1 py-3 bg-red-400 text-white rounded-xl font-semibold hover:bg-red-500 transition-all">🗑️ Delete</button>
+                <button onclick="closeConfirm()" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-semibold hover:bg-gray-200 transition-all">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA LAYER ---
+        const STORAGE_KEY = 'birthdayfy_data';
+        const PWD_KEY = 'birthdayfy_admin_pwd';
+        const DEFAULT_PWD = 'admin123';
+
+        function getPassword() { return localStorage.getItem(PWD_KEY) || DEFAULT_PWD; }
+
+
+        function getData() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : { gifts: {} };
+        }
+
+        function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+        function getAllGifts() {
+            const d = getData();
+            return Object.entries(d.gifts).map(([key, val]) => ({ key, ...val }));
+        }
+
+        // --- STATE ---
+        let editingKey = null;
+        let uploadedPhotos = [];
+
+        // --- AUTH ---
+        function checkAuth() {
+            if (sessionStorage.getItem('admin_logged_in') === 'true') showDashboard();
+            else showLogin();
+        }
+
+        function showLogin() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            renderGiftList();
+        }
+
+        function adminLogin() {
+            const pwd = document.getElementById('adminPassword').value;
+            if (pwd === getPassword()) {
+                sessionStorage.setItem('admin_logged_in', 'true');
+                showDashboard();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+
+        function adminLogout() {
+            sessionStorage.removeItem('admin_logged_in');
+            showLogin();
+        }
+
+        // --- FORM ---
+        function toggleForm() {
+            const form = document.getElementById('giftForm');
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                document.getElementById('showFormBtn').textContent = '📝 Close Form';
+            } else {
+                form.classList.add('hidden');
+                document.getElementById('showFormBtn').textContent = '✨ Create New Gift';
+                resetForm();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('formTitle').textContent = 'Create New Gift';
+            document.getElementById('recipientName').value = '';
+            document.getElementById('spotifyUrl').value = '';
+            document.getElementById('letterText').value = '';
+            document.getElementById('spotifyPreview').classList.add('hidden');
+            document.getElementById('spotifyPreview').innerHTML = '';
+            editingKey = null;
+            uploadedPhotos = [];
+            document.getElementById('photoInput').value = '';
+            renderPhotoPreviews();
+        }
+
+        // --- PHOTOS ---
+        function handlePhotoUpload(event) {
+            const files = event.target.files;
+            const maxPhotos = 5;
+            if (uploadedPhotos.length + files.length > maxPhotos) {
+                alert(`Maximum ${maxPhotos} photos allowed. You can add ${maxPhotos - uploadedPhotos.length} more.`);
+                return;
+            }
+            for (let file of files) {
+                compressImage(file, (dataUrl) => {
+                    uploadedPhotos.push(dataUrl);
+                    renderPhotoPreviews();
+                });
+            }
+            event.target.value = '';
+        }
+
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height;
+                    const maxW = 800;
+                    if (w > maxW) { h = (maxW / w) * h; w = maxW; }
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    callback(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhoto(index) {
+            uploadedPhotos.splice(index, 1);
+            renderPhotoPreviews();
+        }
+
+        function renderPhotoPreviews() {
+            const container = document.getElementById('photoPreviews');
+            container.innerHTML = '';
+            uploadedPhotos.forEach((dataUrl, idx) => {
+                const div = document.createElement('div');
+                div.className = 'relative group';
+                div.innerHTML = `
+                    <img src="${dataUrl}" class="preview-thumb">
+                    <button onclick="removePhoto(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-400 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">✕</button>
+                `;
+                container.appendChild(div);
+            });
+            document.getElementById('photoCount').textContent = `${uploadedPhotos.length} photos`;
+        }
+
+        // --- SPOTIFY ---
+        function convertSpotifyUrl(url) {
+            if (!url) return null;
+            const m = url.match(/open\.spotify\.com\/(embed\/)?(track|playlist|album|episode)\/([a-zA-Z0-9]+)/);
+            if (m) return `https://open.spotify.com/embed/${m[2]}/${m[3]}`;
+            return null;
+        }
+
+        function previewSpotify() {
+            const url = document.getElementById('spotifyUrl').value;
+            const embed = convertSpotifyUrl(url);
+            const preview = document.getElementById('spotifyPreview');
+            if (embed) {
+                preview.classList.remove('hidden');
+                preview.innerHTML = `<iframe src="${embed}" width="100%" height="80" frameborder="0" allow="encrypted-media" class="rounded-xl"></iframe>`;
+            } else {
+                preview.classList.add('hidden');
+                preview.innerHTML = '';
+            }
+        }
+
+        // --- SAVE ---
+        function saveGift() {
+            const name = document.getElementById('recipientName').value.trim();
+            if (!name) { alert('Please enter the recipient name.'); return; }
+
+            const spotifyUrl = document.getElementById('spotifyUrl').value.trim();
+            const letter = document.getElementById('letterText').value.trim();
+            const newKey = name.toLowerCase();
+
+            const data = getData();
+
+            // Delete old entry if name changed during edit
+            if (editingKey && editingKey !== newKey) {
+                delete data.gifts[editingKey];
+            }
+
+            // Check for duplicate name (only if creating new or name changed)
+            if (data.gifts[newKey] && (!editingKey || editingKey !== newKey)) {
+                if (!confirm(`A gift for "${name}" already exists. Overwrite?`)) return;
+            }
+
+            data.gifts[newKey] = {
+                name: name,
+                photos: uploadedPhotos,
+                spotifyUrl: spotifyUrl,
+                letter: letter,
+                createdAt: editingKey ? data.gifts[editingKey]?.createdAt || new Date().toISOString() : new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            // Clean up old key if only case changed
+            if (editingKey && editingKey !== newKey) delete data.gifts[editingKey];
+
+            saveData(data);
+            resetForm();
+            toggleForm();
+            renderGiftList();
+        }
+
+        // --- EDIT ---
+        function editGift(key) {
+            const data = getData();
+            const gift = data.gifts[key];
+            if (!gift) return;
+
+            editingKey = key;
+            document.getElementById('formTitle').textContent = `✏️ Edit Gift for ${gift.name}`;
+            document.getElementById('recipientName').value = gift.name;
+            document.getElementById('spotifyUrl').value = gift.spotifyUrl || '';
+            document.getElementById('letterText').value = gift.letter || '';
+            uploadedPhotos = [...(gift.photos || [])];
+            renderPhotoPreviews();
+            previewSpotify();
+
+            const form = document.getElementById('giftForm');
+            form.classList.remove('hidden');
+            document.getElementById('showFormBtn').textContent = '📝 Close Form';
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- DELETE ---
+        let deleteTarget = null;
+
+        function deleteGift(key) {
+            deleteTarget = key;
+            const data = getData();
+            const name = data.gifts[key]?.name || key;
+            document.getElementById('confirmMessage').textContent = `Delete gift for "${name}"? This cannot be undone.`;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function confirmDelete() {
+            if (!deleteTarget) return;
+            const data = getData();
+            delete data.gifts[deleteTarget];
+            saveData(data);
+            document.getElementById('confirmModal').classList.add('hidden');
+            deleteTarget = null;
+            renderGiftList();
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            deleteTarget = null;
+        }
+
+        // --- RENDER ---
+        function renderGiftList() {
+            const gifts = getAllGifts();
+            const container = document.getElementById('giftCards');
+            const empty = document.getElementById('emptyState');
+
+            if (gifts.length === 0) {
+                container.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            container.innerHTML = gifts.map(g => {
+                const photoHtml = g.photos && g.photos.length > 0
+                    ? `<img src="${g.photos[0]}" class="photo-thumb">`
+                    : `<div class="w-[80px] h-[80px] rounded-xl bg-pink-100 flex items-center justify-center text-3xl">📷</div>`;
+                const letterPreview = g.letter ? g.letter.slice(0, 80) + (g.letter.length > 80 ? '...' : '') : '';
+                const date = g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '';
+                const spotifyBadge = g.spotifyUrl ? '🎵' : '';
+                return `
+                    <div class="gift-card bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-md">
+                        <div class="flex gap-4">
+                            ${photoHtml}
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-pink-600 text-lg truncate">${g.name}</h3>
+                                <p class="text-xs text-gray-400">${date} ${spotifyBadge} ${g.photos?.length || 0} 📸</p>
+                                ${letterPreview ? `<p class="text-sm text-gray-500 mt-1 italic truncate">"${letterPreview}"</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-3 pt-3 border-t border-pink-100">
+                            <button onclick='editGift("${g.key}")' class="flex-1 py-2 bg-purple-50 text-purple-500 rounded-xl text-sm hover:bg-purple-100 transition-all font-medium">✏️ Edit</button>
+                            <button onclick='deleteGift("${g.key}")' class="flex-1 py-2 bg-red-50 text-red-400 rounded-xl text-sm hover:bg-red-100 transition-all font-medium">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- INIT ---
+        checkAuth();
+    </script>
+</body>
+</html>

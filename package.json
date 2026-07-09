@@ -1,0 +1,8 @@
+{
+  "name": "birthdayfy",
+  "version": "1.0.0",
+  "description": "Birthday gift web app - create and receive personalized birthday gifts",
+  "scripts": {
+    "start": "npx serve . -l 3000"
+  }
+}
