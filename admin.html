@@ -27,11 +27,10 @@
         <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 w-full max-w-sm text-center fade-in">
             <div class="text-5xl mb-4">🔐</div>
             <h2 class="text-2xl font-bold text-pink-600 mb-1">Admin Access</h2>
-            <p class="text-purple-400 text-sm mb-6">Login to manage gifts</p>
-            <input type="email" id="adminEmail" placeholder="Admin email" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none mb-3 text-center">
+            <p class="text-purple-400 text-sm mb-6">Enter password to manage gifts</p>
             <input type="password" id="adminPassword" placeholder="Password" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none mb-4 text-center" onkeydown="if(event.key==='Enter') adminLogin()">
             <button onclick="adminLogin()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all">✨ Login</button>
-            <p id="loginError" class="text-red-400 text-sm mt-3 hidden"></p>
+            <p id="loginError" class="text-red-400 text-sm mt-3 hidden">Wrong password! Try again.</p>
         </div>
     </div>
 
@@ -116,6 +115,11 @@
 
     <script>
         // --- DATA LAYER ---
+        const PWD_KEY = 'birthdayfy_admin_pwd';
+        const DEFAULT_PWD = 'admin123';
+
+        function getPassword() { return localStorage.getItem(PWD_KEY) || DEFAULT_PWD; }
+
         let currentGifts = [];
 
         async function loadGifts() {
@@ -134,10 +138,9 @@
         let editingId = null;
         let uploadedPhotos = [];
 
-        // --- AUTH (Supabase Auth) ---
-        async function checkAuth() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) showDashboard();
+        // --- AUTH ---
+        function checkAuth() {
+            if (sessionStorage.getItem('admin_logged_in') === 'true') showDashboard();
             else showLogin();
         }
 
@@ -152,23 +155,19 @@
             renderGiftList();
         }
 
-        async function adminLogin() {
-            const email = document.getElementById('adminEmail').value.trim();
+        function adminLogin() {
             const pwd = document.getElementById('adminPassword').value;
-            const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
-            if (error) {
-                const el = document.getElementById('loginError');
-                el.textContent = error.message;
-                el.classList.remove('hidden');
-                return;
+            if (pwd === getPassword()) {
+                sessionStorage.setItem('admin_logged_in', 'true');
+                showDashboard();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+                document.getElementById('adminPassword').value = '';
             }
-            showDashboard();
         }
 
-        async function adminLogout() {
-            await supabase.auth.signOut();
-            document.getElementById('adminEmail').value = '';
-            document.getElementById('adminPassword').value = '';
+        function adminLogout() {
+            sessionStorage.removeItem('admin_logged_in');
             showLogin();
         }
 

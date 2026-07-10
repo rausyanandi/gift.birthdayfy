@@ -75,15 +75,19 @@ DROP POLICY IF EXISTS "Public read gifts" ON public.gifts;
 CREATE POLICY "Public read gifts" ON public.gifts
     FOR SELECT USING (true);
 
--- Tulis: HANYA user yang sudah login (admin). user.html tetap cuma bisa baca.
+-- Tulis: bebas via anon key (admin di-client cuma pakai password sederhana).
+-- Catatan: karena app tanpa backend, ini memang terbuka — cocok untuk pemakaian pribadi/tertutup.
 DROP POLICY IF EXISTS "Admin insert gifts" ON public.gifts;
-CREATE POLICY "Admin insert gifts" ON public.gifts
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Admin update gifts" ON public.gifts;
-CREATE POLICY "Admin update gifts" ON public.gifts
-    FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
-
 DROP POLICY IF EXISTS "Admin delete gifts" ON public.gifts;
-CREATE POLICY "Admin delete gifts" ON public.gifts
-    FOR DELETE USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Public insert gifts" ON public.gifts;
+CREATE POLICY "Public insert gifts" ON public.gifts
+    FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public update gifts" ON public.gifts;
+CREATE POLICY "Public update gifts" ON public.gifts
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public delete gifts" ON public.gifts;
+CREATE POLICY "Public delete gifts" ON public.gifts
+    FOR DELETE USING (true);
