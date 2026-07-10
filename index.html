@@ -1,80 +1,518 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Birthday Gift Box 🎁</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <script src="vendor/supabase-js.min.js"></script>
+    <script src="supabase.js"></script>
     <style>
         * { font-family: 'Poppins', sans-serif; }
-        body {
-            background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #fff9c4 100%);
-            min-height: 100vh;
-        }
-        .float-animation {
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-        .heart {
-            position: fixed;
-            font-size: 24px;
-            animation: heartFloat 4s ease-in infinite;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 0;
-        }
-        @keyframes heartFloat {
-            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
-        }
-        .btn-admin {
-            background: linear-gradient(135deg, #f472b6, #ec4899);
-        }
-        .btn-user {
-            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-        }
+        body { background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #fff9c4 100%); min-height: 100vh; }
+        .fade-in { animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .float { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+        .glow { box-shadow: 0 0 40px rgba(236, 64, 122, 0.2); }
+        .photo-grid-img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; }
+        .photo-grid-img:hover { transform: scale(1.03); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        .heart-particle { position: fixed; font-size: 24px; pointer-events: none; animation: heartRise 4s ease-in forwards; z-index: 0; }
+        @keyframes heartRise { 0% { transform: translateY(100vh) rotate(0deg) scale(0); opacity: 0; } 10% { opacity: 1; transform: translateY(90vh) rotate(36deg) scale(1); } 90% { opacity: 1; } 100% { transform: translateY(-10vh) rotate(720deg) scale(0.5); opacity: 0; } }
+        .letter-card { background: linear-gradient(145deg, #fff5f7, #fff); border: 2px solid #fbcfe8; box-shadow: 0 8px 32px rgba(236, 64, 122, 0.1); }
+        .typewriter { overflow: hidden; white-space: pre-wrap; animation: typewriter 1.5s steps(40) 0.5s 1 normal both; }
+        @keyframes typewriter { from { max-height: 0; opacity: 0; } to { max-height: 1000px; opacity: 1; } }
+        .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; padding: 2rem; cursor: pointer; }
+        .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 16px; object-fit: contain; }
+        .sparkle { position: absolute; pointer-events: none; font-size: 20px; animation: sparkleFade 0.8s ease forwards; }
+        @keyframes sparkleFade { 0% { transform: scale(0) rotate(0deg); opacity: 1; } 100% { transform: scale(1.5) rotate(180deg); opacity: 0; } }
+        .bounce-in { animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+        .gift-card { transition: all 0.3s ease; }
+        .gift-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(236, 64, 122, 0.15); }
+        .photo-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; }
+        .preview-thumb { width: 100px; height: 100px; object-fit: cover; border-radius: 12px; border: 2px solid #fbcfe8; }
+        .upload-area { border: 2px dashed #f9a8d4; border-radius: 16px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-area:hover { background: #fdf2f8; border-color: #f472b6; }
+        .scale-in { animation: scaleIn 0.5s ease; }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 relative overflow-hidden">
-    <div id="hearts-container"></div>
+<body class="p-4 relative overflow-x-hidden">
 
-    <div class="text-center max-w-md mx-auto relative z-10">
-        <div class="float-animation mb-8">
-            <div class="text-8xl mb-2">🎁</div>
-            <div class="text-4xl">🎂</div>
+    <!-- SPARKLE / HEART CONTAINERS -->
+    <div id="sparkleContainer" class="fixed inset-0 pointer-events-none z-0"></div>
+    <div id="heartContainer" class="fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- ADMIN FLOATING BUTTON -->
+    <button onclick="openAdminLogin()" class="fixed top-4 right-4 z-40 w-12 h-12 rounded-full bg-white/70 backdrop-blur-sm shadow-lg text-2xl hover:bg-pink-100 transition-all">🔐</button>
+
+    <!-- RECIPIENT: INPUT SCREEN -->
+    <div id="inputScreen" class="flex items-center justify-center min-h-screen relative z-10">
+        <div class="text-center max-w-md mx-auto fade-in">
+            <div class="float mb-6"><div class="text-7xl">🎁</div></div>
+            <h1 class="text-3xl md:text-4xl font-bold text-pink-600 mb-2">You Have a Gift!</h1>
+            <p class="text-purple-500 mb-8">Masukkan nama kamu untuk membuka gift spesial</p>
+            <div class="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-xl">
+                <input type="text" id="userNameInput" placeholder="Masukkan nama..." class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none text-center text-lg mb-4" onkeydown="if(event.key==='Enter') openGift()">
+                <button onclick="openGift()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-[1.02] transition-all">🎈 Buka Gift Saya</button>
+            </div>
+            <div id="notFound" class="hidden mt-6 p-6 bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl">
+                <div class="text-5xl mb-3">😢</div>
+                <h3 class="text-lg font-bold text-gray-600">Gift Tidak Ditemukan</h3>
+                <p class="text-gray-400 text-sm">Maaf, kami tidak menemukan gift untuk "<span id="notFoundName" class="font-semibold text-pink-400"></span>"</p>
+                <button onclick="resetUser()" class="mt-4 px-6 py-2 bg-pink-100 text-pink-500 rounded-xl hover:bg-pink-200 transition-all text-sm font-medium">Coba lagi</button>
+            </div>
         </div>
+    </div>
 
-        <h1 class="text-4xl md:text-5xl font-bold text-pink-600 mb-3 drop-shadow-sm">Birthday Gift Box</h1>
-        <p class="text-lg text-purple-500 mb-10 font-light">Pilih peran kamu di bawah ini:</p>
-
-        <div class="space-y-4">
-            <a href="admin.html" class="block w-full px-8 py-4 btn-admin text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-lg font-semibold tracking-wide">
-                🎀 Pembuat Gift (Admin)
-            </a>
-            <a href="user.html" class="block w-full px-8 py-4 btn-user text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-lg font-semibold tracking-wide">
-                🎈 Penerima Gift (User)
-            </a>
+    <!-- RECIPIENT: GIFT SCREEN -->
+    <div id="giftScreen" class="hidden relative z-10 min-h-screen">
+        <div class="text-center py-12 md:py-20 fade-in">
+            <div class="text-6xl md:text-8xl mb-4 bounce-in">🎂</div>
+            <h1 class="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">Happy Birthday!</h1>
+            <h2 id="giftNameDisplay" class="text-3xl md:text-4xl font-bold text-pink-600 mt-2"></h2>
+            <p class="text-purple-400 mt-2">Gift ini dibuat khusus untukmu 💕</p>
         </div>
+        <div class="max-w-2xl mx-auto space-y-10 pb-20">
+            <div id="photoSection" class="hidden bg-white/60 backdrop-blur-sm rounded-3xl p-6 shadow-lg fade-in">
+                <h3 class="text-xl font-bold text-pink-600 mb-4">📸 Kenangan</h3>
+                <div id="photoGallery" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+            </div>
+            <div id="spotifySection" class="hidden bg-white/60 backdrop-blur-sm rounded-3xl p-6 shadow-lg fade-in">
+                <h3 class="text-xl font-bold text-pink-600 mb-4">🎵 Lagu Untukmu</h3>
+                <div id="spotifyPlayer" class="rounded-xl overflow-hidden"></div>
+            </div>
+            <div id="letterSection" class="hidden fade-in">
+                <div class="letter-card rounded-3xl p-8 relative">
+                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 text-3xl">💌</div>
+                    <h3 class="text-xl font-bold text-pink-600 mb-4 text-center pt-2">Sebuah Surat Untukmu</h3>
+                    <div id="letterDisplay" class="text-gray-600 leading-relaxed whitespace-pre-wrap text-lg typewriter"></div>
+                    <div class="mt-6 pt-4 border-t border-pink-100 text-right"><p class="text-pink-300 text-sm">With love 💕</p></div>
+                </div>
+            </div>
+            <div class="text-center text-pink-300 text-sm pb-8">Dibuat dengan <span class="text-red-400">❤️</span> khusus untukmu</div>
+        </div>
+    </div>
 
-        <p class="mt-12 text-pink-300 text-sm">Made with <span class="text-red-400">❤️</span> for someone very special</p>
+    <!-- LIGHTBOX -->
+    <div id="lightbox" class="hidden lightbox" onclick="closeLightbox()">
+        <button onclick="event.stopPropagation(); closeLightbox()" class="absolute top-4 right-4 text-white text-3xl hover:text-pink-300 transition-colors z-10">✕</button>
+        <img id="lightboxImg" src="" alt="Foto diperbesar">
+    </div>
+
+    <!-- ADMIN LOGIN MODAL -->
+    <div id="adminLoginModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
+        <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 w-full max-w-sm text-center fade-in relative">
+            <button onclick="closeAdminLogin()" class="absolute top-3 right-4 text-gray-400 text-xl hover:text-gray-600">✕</button>
+            <div class="text-5xl mb-4">🔐</div>
+            <h2 class="text-2xl font-bold text-pink-600 mb-1">Admin Access</h2>
+            <p class="text-purple-400 text-sm mb-6">Masuk untuk kelola gift</p>
+            <input type="password" id="adminPassword" placeholder="Password" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none mb-4 text-center" onkeydown="if(event.key==='Enter') adminLogin()">
+            <button onclick="adminLogin()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all">✨ Login</button>
+            <p id="loginError" class="text-red-400 text-sm mt-3 hidden">Password salah!</p>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="adminDashboard" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-pink-50 to-purple-50 p-4 md:p-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-pink-600">🎀 Dashboard Admin</h1>
+                    <p class="text-purple-400 text-sm">Kelola birthday gift</p>
+                </div>
+                <button onclick="adminLogout()" class="px-4 py-2 bg-white/70 rounded-xl text-pink-500 hover:bg-pink-50 transition-all shadow-sm border border-pink-200">🚪 Logout</button>
+            </div>
+
+            <button onclick="toggleForm()" id="showFormBtn" class="w-full mb-6 px-6 py-4 bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-[1.01] transition-all text-lg font-semibold">✨ Buat Gift Baru</button>
+
+            <div id="giftForm" class="hidden bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 md:p-8 mb-8 fade-in">
+                <h2 id="formTitle" class="text-xl font-bold text-pink-600 mb-6">Buat Gift Baru</h2>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-pink-500 font-medium mb-2">🎀 Nama Penerima</label>
+                        <input type="text" id="recipientName" placeholder="cth. Alice" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-pink-500 font-medium mb-2">📸 Foto <span class="text-gray-400 font-normal text-sm">(maks 5)</span></label>
+                        <div class="upload-area" onclick="document.getElementById('photoInput').click()">
+                            <p class="text-pink-400 text-lg mb-1">📷 Klik untuk unggah foto</p>
+                            <p class="text-gray-400 text-sm">atau tarik & lepas</p>
+                        </div>
+                        <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload(event)" class="hidden">
+                        <div id="photoPreviews" class="flex flex-wrap gap-3 mt-3"></div>
+                        <p id="photoCount" class="text-sm text-gray-400 mt-1">0 foto</p>
+                    </div>
+                    <div>
+                        <label class="block text-pink-500 font-medium mb-2">🎵 URL Spotify</label>
+                        <input type="url" id="spotifyUrl" placeholder="https://open.spotify.com/track/..." class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none" oninput="previewSpotify()">
+                        <div id="spotifyPreview" class="mt-3 hidden"></div>
+                    </div>
+                    <div>
+                        <label class="block text-pink-500 font-medium mb-2">💌 Surat</label>
+                        <textarea id="letterText" rows="6" placeholder="Tulis surat untuknya..." class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none resize-none leading-relaxed"></textarea>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="saveGift()" class="flex-1 py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all">💾 Simpan Gift</button>
+                        <button onclick="toggleForm()" class="px-6 py-3 bg-gray-100 text-gray-500 rounded-xl font-semibold hover:bg-gray-200 transition-all">Batal</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="giftList">
+                <h2 class="text-lg font-semibold text-purple-500 mb-4">🎁 Gift Kamu</h2>
+                <div id="giftCards" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div id="emptyState" class="text-center py-16 hidden">
+                    <div class="text-6xl mb-4">🎀</div>
+                    <p class="text-purple-400 text-xl font-medium">Belum ada gift</p>
+                    <p class="text-gray-400">Buat gift pertama di atas!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIRM DELETE MODAL -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div class="text-4xl mb-3">⚠️</div>
+            <h3 class="text-lg font-bold text-gray-700 mb-2">Hapus Gift?</h3>
+            <p class="text-gray-500 mb-6" id="confirmMessage">Yakin?</p>
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()" class="flex-1 py-3 bg-red-400 text-white rounded-xl font-semibold hover:bg-red-500 transition-all">🗑️ Hapus</button>
+                <button onclick="closeConfirm()" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-semibold hover:bg-gray-200 transition-all">Batal</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        function createHeart() {
-            const heart = document.createElement('div');
-            heart.className = 'heart';
-            heart.innerHTML = ['💕','💖','💗','💝','✨','🦋','🌸'][Math.floor(Math.random()*7)];
-            heart.style.left = Math.random() * 100 + 'vw';
-            heart.style.fontSize = (Math.random() * 20 + 16) + 'px';
-            heart.style.animationDuration = (Math.random() * 3 + 3) + 's';
-            document.getElementById('hearts-container').appendChild(heart);
-            setTimeout(() => heart.remove(), 6000);
+        // ===== DATA LAYER =====
+        const PWD_KEY = 'birthdayfy_admin_pwd';
+        const DEFAULT_PWD = 'admin123';
+        function getPassword() { return localStorage.getItem(PWD_KEY) || DEFAULT_PWD; }
+
+        let currentGifts = [];
+        let editingId = null;
+        let uploadedPhotos = [];
+        let currentGift = null;
+        let deleteTarget = null;
+        let heartsInterval = null;
+        let sparkleActive = false;
+
+        // ===== RECIPIENT: FIND GIFT =====
+        async function findGift(name) {
+            if (!name) return null;
+            const { data, error } = await supabase
+                .from("gifts")
+                .select("*")
+                .ilike("name", name.trim())
+                .single();
+            if (error) return null;
+            return data;
         }
-        setInterval(createHeart, 500);
+
+        function convertSpotifyUrl(url) {
+            if (!url) return null;
+            const m = url.match(/open\.spotify\.com\/(embed\/)?(track|playlist|album|episode)\/([a-zA-Z0-9]+)/);
+            if (m) return `https://open.spotify.com/embed/${m[2]}/${m[3]}`;
+            return null;
+        }
+
+        async function openGift() {
+            const name = document.getElementById('userNameInput').value.trim();
+            if (!name) {
+                document.getElementById('userNameInput').classList.add('border-red-300');
+                setTimeout(() => document.getElementById('userNameInput').classList.remove('border-red-300'), 1500);
+                return;
+            }
+            const gift = await findGift(name);
+            if (!gift) {
+                document.getElementById('notFound').classList.remove('hidden');
+                document.getElementById('notFoundName').textContent = name;
+                return;
+            }
+            currentGift = gift;
+            showGift(gift);
+        }
+
+        function resetUser() {
+            document.getElementById('notFound').classList.add('hidden');
+            document.getElementById('userNameInput').value = '';
+            document.getElementById('userNameInput').focus();
+        }
+
+        function showGift(gift) {
+            document.getElementById('inputScreen').classList.add('hidden');
+            document.getElementById('giftScreen').classList.remove('hidden');
+            document.getElementById('giftNameDisplay').textContent = gift.name;
+
+            const photoSection = document.getElementById('photoSection');
+            const gallery = document.getElementById('photoGallery');
+            gallery.innerHTML = '';
+            if (gift.photos && gift.photos.length > 0) {
+                gift.photos.forEach((photo, idx) => {
+                    const div = document.createElement('div');
+                    div.className = idx === 0 && gift.photos.length === 1 ? 'col-span-2 md:col-span-3' : '';
+                    const img = document.createElement('img');
+                    img.src = photo; img.className = 'photo-grid-img'; img.loading = 'lazy';
+                    img.onclick = () => openLightbox(photo);
+                    div.appendChild(img); gallery.appendChild(div);
+                });
+                photoSection.classList.remove('hidden');
+            } else { photoSection.classList.add('hidden'); }
+
+            const spotifySection = document.getElementById('spotifySection');
+            const player = document.getElementById('spotifyPlayer');
+            if (gift.spotifyUrl) {
+                const embed = convertSpotifyUrl(gift.spotifyUrl);
+                if (embed) {
+                    player.innerHTML = `<iframe src="${embed}" width="100%" height="152" frameborder="0" allow="encrypted-media; clipboard-write" class="rounded-xl"></iframe>`;
+                    spotifySection.classList.remove('hidden');
+                } else { spotifySection.classList.add('hidden'); }
+            } else { spotifySection.classList.add('hidden'); }
+
+            const letterSection = document.getElementById('letterSection');
+            const letterDisplay = document.getElementById('letterDisplay');
+            if (gift.letter) {
+                letterDisplay.textContent = gift.letter;
+                letterSection.classList.remove('hidden');
+                letterDisplay.style.animation = 'none';
+                setTimeout(() => { letterDisplay.style.animation = ''; }, 10);
+            } else { letterSection.classList.add('hidden'); }
+
+            launchConfetti();
+            startHearts();
+            setupSparkles();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== CONFETTI / HEARTS / SPARKLES =====
+        function launchConfetti() {
+            const duration = 3000; const end = Date.now() + duration;
+            function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: ['#f472b6','#ec4899','#a78bfa','#fbbf24','#34d399'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: ['#f472b6','#ec4899','#a78bfa','#fbbf24','#34d399'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }
+            frame();
+            setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 }, colors: ['#f472b6','#ec4899','#a78bfa','#fbbf24','#34d399','#f87171'] }), 300);
+            setTimeout(() => confetti({ particleCount: 100, spread: 120, origin: { y: 0.4 }, colors: ['#f472b6','#a78bfa','#fbbf24'] }), 1000);
+            setTimeout(() => confetti({ particleCount: 80, spread: 160, origin: { y: 0.5 }, colors: ['#f472b6','#a78bfa','#fbbf24'] }), 2000);
+        }
+        function startHearts() {
+            if (heartsInterval) clearInterval(heartsInterval);
+            const container = document.getElementById('heartContainer');
+            heartsInterval = setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.innerHTML = ['💕','💖','💗','💝','✨','🌸','🦋','🎀'][Math.floor(Math.random()*8)];
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.fontSize = (Math.random() * 24 + 16) + 'px';
+                heart.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 6000);
+            }, 400);
+        }
+        function setupSparkles() {
+            if (sparkleActive) return;
+            sparkleActive = true;
+            const container = document.getElementById('sparkleContainer');
+            document.addEventListener('mousemove', (e) => {
+                if (document.getElementById('giftScreen').classList.contains('hidden')) return;
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.textContent = ['✨','💫','⭐','🌟'][Math.floor(Math.random()*4)];
+                sparkle.style.left = (e.clientX - 10) + 'px';
+                sparkle.style.top = (e.clientY - 10) + 'px';
+                container.appendChild(sparkle);
+                setTimeout(() => sparkle.remove(), 800);
+            });
+        }
+
+        // ===== LIGHTBOX =====
+        function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+        function closeLightbox() { document.getElementById('lightbox').classList.add('hidden'); document.body.style.overflow = ''; }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+        // ===== ADMIN: LOGIN =====
+        function openAdminLogin() { document.getElementById('adminLoginModal').classList.remove('hidden'); document.getElementById('adminPassword').value=''; document.getElementById('loginError').classList.add('hidden'); setTimeout(()=>document.getElementById('adminPassword').focus(),50); }
+        function closeAdminLogin() { document.getElementById('adminLoginModal').classList.add('hidden'); }
+        function adminLogin() {
+            const pwd = document.getElementById('adminPassword').value;
+            if (pwd === getPassword()) {
+                closeAdminLogin();
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                renderGiftList();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+        function adminLogout() { document.getElementById('adminDashboard').classList.add('hidden'); toggleForm(true); }
+
+        // ===== ADMIN: FORM =====
+        function toggleForm(forceClose) {
+            const form = document.getElementById('giftForm');
+            if (forceClose) { form.classList.add('hidden'); document.getElementById('showFormBtn').textContent = '✨ Buat Gift Baru'; resetForm(); return; }
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                document.getElementById('showFormBtn').textContent = '📝 Tutup Form';
+            } else {
+                form.classList.add('hidden');
+                document.getElementById('showFormBtn').textContent = '✨ Buat Gift Baru';
+                resetForm();
+            }
+        }
+        function resetForm() {
+            document.getElementById('formTitle').textContent = 'Buat Gift Baru';
+            document.getElementById('recipientName').value = '';
+            document.getElementById('spotifyUrl').value = '';
+            document.getElementById('letterText').value = '';
+            document.getElementById('spotifyPreview').classList.add('hidden');
+            document.getElementById('spotifyPreview').innerHTML = '';
+            editingId = null; uploadedPhotos = [];
+            document.getElementById('photoInput').value = '';
+            renderPhotoPreviews();
+        }
+
+        // ===== ADMIN: PHOTOS =====
+        function handlePhotoUpload(event) {
+            const files = event.target.files; const maxPhotos = 5;
+            if (uploadedPhotos.length + files.length > maxPhotos) { alert(`Maksimal ${maxPhotos} foto. Sisa yang bisa ditambah: ${maxPhotos - uploadedPhotos.length}`); return; }
+            for (let file of files) {
+                compressImage(file, (dataUrl) => { uploadedPhotos.push(dataUrl); renderPhotoPreviews(); });
+            }
+            event.target.value = '';
+        }
+        function compressImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height; const maxW = 800;
+                    if (w > maxW) { h = (maxW / w) * h; w = maxW; }
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    callback(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        function removePhoto(index) { uploadedPhotos.splice(index, 1); renderPhotoPreviews(); }
+        function renderPhotoPreviews() {
+            const container = document.getElementById('photoPreviews'); container.innerHTML = '';
+            uploadedPhotos.forEach((dataUrl, idx) => {
+                const div = document.createElement('div'); div.className = 'relative group';
+                div.innerHTML = `<img src="${dataUrl}" class="preview-thumb"><button onclick="removePhoto(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-400 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">✕</button>`;
+                container.appendChild(div);
+            });
+            document.getElementById('photoCount').textContent = `${uploadedPhotos.length} foto`;
+        }
+
+        // ===== ADMIN: SPOTIFY =====
+        function previewSpotify() {
+            const url = document.getElementById('spotifyUrl').value;
+            const embed = convertSpotifyUrl(url);
+            const preview = document.getElementById('spotifyPreview');
+            if (embed) { preview.classList.remove('hidden'); preview.innerHTML = `<iframe src="${embed}" width="100%" height="80" frameborder="0" allow="encrypted-media" class="rounded-xl"></iframe>`; }
+            else { preview.classList.add('hidden'); preview.innerHTML = ''; }
+        }
+
+        // ===== ADMIN: SAVE =====
+        async function saveGift() {
+            if (typeof supabase === 'undefined') { alert("Koneksi Supabase gagal dimuat. Cek koneksi internet lalu refresh."); return; }
+            const name = document.getElementById('recipientName').value.trim();
+            if (!name) { alert('Masukkan nama penerima.'); return; }
+            const gift = {
+                name: name,
+                photos: uploadedPhotos,
+                spotifyUrl: document.getElementById('spotifyUrl').value.trim(),
+                letter: document.getElementById('letterText').value.trim(),
+                updatedAt: new Date().toISOString()
+            };
+            if (editingId) {
+                const { error } = await supabase.from("gifts").update(gift).eq("id", editingId);
+                if (error) { alert("gagal mengupdate: " + (error.message || JSON.stringify(error))); console.log(error); return; }
+                alert("gift berhasil diupdate");
+            } else {
+                const { error } = await supabase.from("gifts").insert([gift]);
+                if (error) { alert("gagal menyimpan: " + (error.message || JSON.stringify(error))); console.log(error); return; }
+                alert("gift berhasil dibuat");
+            }
+            resetForm(); toggleForm(); renderGiftList();
+        }
+
+        // ===== ADMIN: LIST / EDIT / DELETE =====
+        async function loadGifts() {
+            const { data, error } = await supabase.from("gifts").select("*").order("created_at", { ascending: false });
+            if (error) { console.log(error); return []; }
+            return data || [];
+        }
+        async function renderGiftList() {
+            currentGifts = await loadGifts();
+            const container = document.getElementById('giftCards');
+            const empty = document.getElementById('emptyState');
+            if (currentGifts.length === 0) { container.innerHTML = ''; empty.classList.remove('hidden'); return; }
+            empty.classList.add('hidden');
+            container.innerHTML = currentGifts.map(g => {
+                const photoHtml = g.photos && g.photos.length > 0 ? `<img src="${g.photos[0]}" class="photo-thumb">` : `<div class="w-[80px] h-[80px] rounded-xl bg-pink-100 flex items-center justify-center text-3xl">📷</div>`;
+                const letterPreview = g.letter ? g.letter.slice(0, 80) + (g.letter.length > 80 ? '...' : '') : '';
+                const date = g.created_at ? new Date(g.created_at).toLocaleDateString() : '';
+                const spotifyBadge = g.spotifyUrl ? '🎵' : '';
+                return `
+                    <div class="gift-card bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-md">
+                        <div class="flex gap-4">
+                            ${photoHtml}
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-pink-600 text-lg truncate">${g.name}</h3>
+                                <p class="text-xs text-gray-400">${date} ${spotifyBadge} ${g.photos?.length || 0} 📸</p>
+                                ${letterPreview ? `<p class="text-sm text-gray-500 mt-1 italic truncate">"${letterPreview}"</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-3 pt-3 border-t border-pink-100">
+                            <button onclick='editGift("${g.id}")' class="flex-1 py-2 bg-purple-50 text-purple-500 rounded-xl text-sm hover:bg-purple-100 transition-all font-medium">✏️ Edit</button>
+                            <button onclick='deleteGift("${g.id}")' class="flex-1 py-2 bg-red-50 text-red-400 rounded-xl text-sm hover:bg-red-100 transition-all font-medium">🗑️ Hapus</button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+        function editGift(id) {
+            const gift = currentGifts.find(g => g.id === id); if (!gift) return;
+            editingId = id;
+            document.getElementById('formTitle').textContent = `✏️ Edit Gift: ${gift.name}`;
+            document.getElementById('recipientName').value = gift.name;
+            document.getElementById('spotifyUrl').value = gift.spotifyUrl || '';
+            document.getElementById('letterText').value = gift.letter || '';
+            uploadedPhotos = [...(gift.photos || [])];
+            renderPhotoPreviews(); previewSpotify();
+            const form = document.getElementById('giftForm');
+            form.classList.remove('hidden');
+            document.getElementById('showFormBtn').textContent = '📝 Tutup Form';
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+        function deleteGift(id) {
+            deleteTarget = id;
+            const gift = currentGifts.find(g => g.id === id);
+            const name = gift?.name || id;
+            document.getElementById('confirmMessage').textContent = `Hapus gift "${name}"? Tidak bisa dibatalkan.`;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+        async function confirmDelete() {
+            if (!deleteTarget) return;
+            const { error } = await supabase.from("gifts").delete().eq("id", deleteTarget);
+            if (error) { alert("gagal menghapus"); console.log(error); }
+            document.getElementById('confirmModal').classList.add('hidden');
+            deleteTarget = null; renderGiftList();
+        }
+        function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); deleteTarget = null; }
+
+        // ===== INIT =====
+        document.getElementById('userNameInput').focus();
     </script>
 </body>
 </html>
