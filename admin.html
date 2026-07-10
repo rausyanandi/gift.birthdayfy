@@ -276,6 +276,10 @@
 
         // --- SAVE ---
         async function saveGift() {
+            if (typeof supabase === 'undefined') {
+                alert("Koneksi Supabase gagal dimuat. Cek koneksi internet / akses ke cdn.jsdelivr.net, lalu refresh.");
+                return;
+            }
             const name = document.getElementById('recipientName').value.trim();
             if (!name) { alert('Please enter the recipient name.'); return; }
 
@@ -293,7 +297,7 @@
                     .update(gift)
                     .eq("id", editingId);
                 if (error) {
-                    alert("gagal mengupdate");
+                    alert("gagal mengupdate: " + (error.message || JSON.stringify(error)));
                     console.log(error);
                     return;
                 }
@@ -303,7 +307,7 @@
                     .from("gifts")
                     .insert([gift]);
                 if (error) {
-                    alert("gagal menyimpan");
+                    alert("gagal menyimpan: " + (error.message || JSON.stringify(error)));
                     console.log(error);
                     return;
                 }

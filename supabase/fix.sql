@@ -1,0 +1,1 @@
+ALTER TABLE public.gifts DROP COLUMN IF EXISTS "nama";
