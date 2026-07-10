@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="supabase.js"></script>
     <style>
         * { font-family: 'Poppins', sans-serif; }
         body {
@@ -162,19 +164,19 @@
 
     <script>
         // --- DATA LAYER ---
-        const STORAGE_KEY = 'birthdayfy_data';
+        async function findGift(name) {
+    if (!name) return null;
 
-        function getData() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : { gifts: {} };
-        }
+    const { data, error } = await supabase
+        .from("gifts")
+        .select("*")
+        .ilike("name", name.trim())
+        .single();
 
-        function findGift(name) {
-            if (!name) return null;
-            const data = getData();
-            const key = name.trim().toLowerCase();
-            return data.gifts[key] || null;
-        }
+    if (error) return null;
+
+    return data;
+}
 
         // --- SPOTIFY ---
         function convertSpotifyUrl(url) {
@@ -187,7 +189,7 @@
         // --- USER FLOW ---
         let currentGift = null;
 
-        function openGift() {
+         async function openGift() {
             const name = document.getElementById('userNameInput').value.trim();
             if (!name) {
                 document.getElementById('userNameInput').classList.add('border-red-300');
@@ -195,7 +197,7 @@
                 return;
             }
 
-            const gift = findGift(name);
+            const gift = await findGift(name);
             if (!gift) {
                 document.getElementById('notFound').classList.remove('hidden');
                 document.getElementById('notFoundName').textContent = name;

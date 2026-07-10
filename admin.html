@@ -18,6 +18,8 @@
         .upload-area { border: 2px dashed #f9a8d4; border-radius: 16px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; }
         .upload-area:hover { background: #fdf2f8; border-color: #f472b6; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="supabase.js"></script>
 </head>
 <body>
     <!-- LOGIN SCREEN -->
@@ -25,10 +27,11 @@
         <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 w-full max-w-sm text-center fade-in">
             <div class="text-5xl mb-4">🔐</div>
             <h2 class="text-2xl font-bold text-pink-600 mb-1">Admin Access</h2>
-            <p class="text-purple-400 text-sm mb-6">Enter password to manage gifts</p>
+            <p class="text-purple-400 text-sm mb-6">Login to manage gifts</p>
+            <input type="email" id="adminEmail" placeholder="Admin email" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none mb-3 text-center">
             <input type="password" id="adminPassword" placeholder="Password" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:border-pink-400 focus:outline-none mb-4 text-center" onkeydown="if(event.key==='Enter') adminLogin()">
             <button onclick="adminLogin()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-[1.02] transition-all">✨ Login</button>
-            <p id="loginError" class="text-red-400 text-sm mt-3 hidden">Wrong password! Try again.</p>
+            <p id="loginError" class="text-red-400 text-sm mt-3 hidden"></p>
         </div>
     </div>
 
@@ -113,32 +116,28 @@
 
     <script>
         // --- DATA LAYER ---
-        const STORAGE_KEY = 'birthdayfy_data';
-        const PWD_KEY = 'birthdayfy_admin_pwd';
-        const DEFAULT_PWD = 'admin123';
+        let currentGifts = [];
 
-        function getPassword() { return localStorage.getItem(PWD_KEY) || DEFAULT_PWD; }
-
-
-        function getData() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : { gifts: {} };
-        }
-
-        function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-
-        function getAllGifts() {
-            const d = getData();
-            return Object.entries(d.gifts).map(([key, val]) => ({ key, ...val }));
+        async function loadGifts() {
+            const { data, error } = await supabase
+                .from("gifts")
+                .select("*")
+                .order("created_at", { ascending: false });
+            if (error) {
+                console.log(error);
+                return [];
+            }
+            return data || [];
         }
 
         // --- STATE ---
-        let editingKey = null;
+        let editingId = null;
         let uploadedPhotos = [];
 
-        // --- AUTH ---
-        function checkAuth() {
-            if (sessionStorage.getItem('admin_logged_in') === 'true') showDashboard();
+        // --- AUTH (Supabase Auth) ---
+        async function checkAuth() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) showDashboard();
             else showLogin();
         }
 
@@ -153,19 +152,23 @@
             renderGiftList();
         }
 
-        function adminLogin() {
+        async function adminLogin() {
+            const email = document.getElementById('adminEmail').value.trim();
             const pwd = document.getElementById('adminPassword').value;
-            if (pwd === getPassword()) {
-                sessionStorage.setItem('admin_logged_in', 'true');
-                showDashboard();
-            } else {
-                document.getElementById('loginError').classList.remove('hidden');
-                document.getElementById('adminPassword').value = '';
+            const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+            if (error) {
+                const el = document.getElementById('loginError');
+                el.textContent = error.message;
+                el.classList.remove('hidden');
+                return;
             }
+            showDashboard();
         }
 
-        function adminLogout() {
-            sessionStorage.removeItem('admin_logged_in');
+        async function adminLogout() {
+            await supabase.auth.signOut();
+            document.getElementById('adminEmail').value = '';
+            document.getElementById('adminPassword').value = '';
             showLogin();
         }
 
@@ -189,7 +192,7 @@
             document.getElementById('letterText').value = '';
             document.getElementById('spotifyPreview').classList.add('hidden');
             document.getElementById('spotifyPreview').innerHTML = '';
-            editingKey = null;
+            editingId = null;
             uploadedPhotos = [];
             document.getElementById('photoInput').value = '';
             renderPhotoPreviews();
@@ -273,51 +276,52 @@
         }
 
         // --- SAVE ---
-        function saveGift() {
+        async function saveGift() {
             const name = document.getElementById('recipientName').value.trim();
             if (!name) { alert('Please enter the recipient name.'); return; }
 
-            const spotifyUrl = document.getElementById('spotifyUrl').value.trim();
-            const letter = document.getElementById('letterText').value.trim();
-            const newKey = name.toLowerCase();
-
-            const data = getData();
-
-            // Delete old entry if name changed during edit
-            if (editingKey && editingKey !== newKey) {
-                delete data.gifts[editingKey];
-            }
-
-            // Check for duplicate name (only if creating new or name changed)
-            if (data.gifts[newKey] && (!editingKey || editingKey !== newKey)) {
-                if (!confirm(`A gift for "${name}" already exists. Overwrite?`)) return;
-            }
-
-            data.gifts[newKey] = {
+            const gift = {
                 name: name,
                 photos: uploadedPhotos,
-                spotifyUrl: spotifyUrl,
-                letter: letter,
-                createdAt: editingKey ? data.gifts[editingKey]?.createdAt || new Date().toISOString() : new Date().toISOString(),
+                spotifyUrl: document.getElementById('spotifyUrl').value.trim(),
+                letter: document.getElementById('letterText').value.trim(),
                 updatedAt: new Date().toISOString()
             };
 
-            // Clean up old key if only case changed
-            if (editingKey && editingKey !== newKey) delete data.gifts[editingKey];
+            if (editingId) {
+                const { error } = await supabase
+                    .from("gifts")
+                    .update(gift)
+                    .eq("id", editingId);
+                if (error) {
+                    alert("gagal mengupdate");
+                    console.log(error);
+                    return;
+                }
+                alert("gift berhasil diupdate");
+            } else {
+                const { error } = await supabase
+                    .from("gifts")
+                    .insert([gift]);
+                if (error) {
+                    alert("gagal menyimpan");
+                    console.log(error);
+                    return;
+                }
+                alert("gift berhasil dibuat");
+            }
 
-            saveData(data);
             resetForm();
             toggleForm();
             renderGiftList();
         }
 
         // --- EDIT ---
-        function editGift(key) {
-            const data = getData();
-            const gift = data.gifts[key];
+        function editGift(id) {
+            const gift = currentGifts.find(g => g.id === id);
             if (!gift) return;
 
-            editingKey = key;
+            editingId = id;
             document.getElementById('formTitle').textContent = `✏️ Edit Gift for ${gift.name}`;
             document.getElementById('recipientName').value = gift.name;
             document.getElementById('spotifyUrl').value = gift.spotifyUrl || '';
@@ -335,19 +339,24 @@
         // --- DELETE ---
         let deleteTarget = null;
 
-        function deleteGift(key) {
-            deleteTarget = key;
-            const data = getData();
-            const name = data.gifts[key]?.name || key;
+        function deleteGift(id) {
+            deleteTarget = id;
+            const gift = currentGifts.find(g => g.id === id);
+            const name = gift?.name || id;
             document.getElementById('confirmMessage').textContent = `Delete gift for "${name}"? This cannot be undone.`;
             document.getElementById('confirmModal').classList.remove('hidden');
         }
 
-        function confirmDelete() {
+        async function confirmDelete() {
             if (!deleteTarget) return;
-            const data = getData();
-            delete data.gifts[deleteTarget];
-            saveData(data);
+            const { error } = await supabase
+                .from("gifts")
+                .delete()
+                .eq("id", deleteTarget);
+            if (error) {
+                alert("gagal menghapus");
+                console.log(error);
+            }
             document.getElementById('confirmModal').classList.add('hidden');
             deleteTarget = null;
             renderGiftList();
@@ -359,24 +368,24 @@
         }
 
         // --- RENDER ---
-        function renderGiftList() {
-            const gifts = getAllGifts();
+        async function renderGiftList() {
+            currentGifts = await loadGifts();
             const container = document.getElementById('giftCards');
             const empty = document.getElementById('emptyState');
 
-            if (gifts.length === 0) {
+            if (currentGifts.length === 0) {
                 container.innerHTML = '';
                 empty.classList.remove('hidden');
                 return;
             }
             empty.classList.add('hidden');
 
-            container.innerHTML = gifts.map(g => {
+            container.innerHTML = currentGifts.map(g => {
                 const photoHtml = g.photos && g.photos.length > 0
                     ? `<img src="${g.photos[0]}" class="photo-thumb">`
                     : `<div class="w-[80px] h-[80px] rounded-xl bg-pink-100 flex items-center justify-center text-3xl">📷</div>`;
                 const letterPreview = g.letter ? g.letter.slice(0, 80) + (g.letter.length > 80 ? '...' : '') : '';
-                const date = g.createdAt ? new Date(g.createdAt).toLocaleDateString() : '';
+                const date = g.created_at ? new Date(g.created_at).toLocaleDateString() : '';
                 const spotifyBadge = g.spotifyUrl ? '🎵' : '';
                 return `
                     <div class="gift-card bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-md">
@@ -389,8 +398,8 @@
                             </div>
                         </div>
                         <div class="flex gap-2 mt-3 pt-3 border-t border-pink-100">
-                            <button onclick='editGift("${g.key}")' class="flex-1 py-2 bg-purple-50 text-purple-500 rounded-xl text-sm hover:bg-purple-100 transition-all font-medium">✏️ Edit</button>
-                            <button onclick='deleteGift("${g.key}")' class="flex-1 py-2 bg-red-50 text-red-400 rounded-xl text-sm hover:bg-red-100 transition-all font-medium">🗑️ Delete</button>
+                            <button onclick='editGift("${g.id}")' class="flex-1 py-2 bg-purple-50 text-purple-500 rounded-xl text-sm hover:bg-purple-100 transition-all font-medium">✏️ Edit</button>
+                            <button onclick='deleteGift("${g.id}")' class="flex-1 py-2 bg-red-50 text-red-400 rounded-xl text-sm hover:bg-red-100 transition-all font-medium">🗑️ Delete</button>
                         </div>
                     </div>
                 `;
