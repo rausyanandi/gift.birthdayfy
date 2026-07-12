@@ -124,6 +124,7 @@
         let currentGifts = [];
 
         async function loadGifts() {
+            if (!supabase || !supabase.from) return [];
             const { data, error } = await supabase
                 .from("gifts")
                 .select("*")
@@ -277,47 +278,53 @@
 
         // --- SAVE ---
         async function saveGift() {
-            if (typeof supabase === 'undefined') {
-                alert("Koneksi Supabase gagal dimuat. Cek koneksi internet / akses ke cdn.jsdelivr.net, lalu refresh.");
-                return;
-            }
-            const name = document.getElementById('recipientName').value.trim();
-            if (!name) { alert('Please enter the recipient name.'); return; }
-
-            const gift = {
-                name: name,
-                photos: uploadedPhotos,
-                spotifyUrl: document.getElementById('spotifyUrl').value.trim(),
-                letter: document.getElementById('letterText').value.trim(),
-                updatedAt: new Date().toISOString()
-            };
-
-            if (editingId) {
-                const { error } = await supabase
-                    .from("gifts")
-                    .update(gift)
-                    .eq("id", editingId);
-                if (error) {
-                    alert("gagal mengupdate: " + (error.message || JSON.stringify(error)));
-                    console.log(error);
+            try {
+                if (typeof supabase === 'undefined' || !supabase.from) {
+                    alert("Koneksi Supabase gagal dimuat. Periksa koneksi internet dan refresh halaman.");
+                    console.error("supabase client not available", typeof supabase);
                     return;
                 }
-                alert("gift berhasil diupdate");
-            } else {
-                const { error } = await supabase
-                    .from("gifts")
-                    .insert([gift]);
-                if (error) {
-                    alert("gagal menyimpan: " + (error.message || JSON.stringify(error)));
-                    console.log(error);
-                    return;
-                }
-                alert("gift berhasil dibuat");
-            }
+                const name = document.getElementById('recipientName').value.trim();
+                if (!name) { alert('Please enter the recipient name.'); return; }
 
-            resetForm();
-            toggleForm();
-            renderGiftList();
+                const gift = {
+                    name: name,
+                    photos: uploadedPhotos,
+                    spotifyUrl: document.getElementById('spotifyUrl').value.trim(),
+                    letter: document.getElementById('letterText').value.trim(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                if (editingId) {
+                    const { error } = await supabase
+                        .from("gifts")
+                        .update(gift)
+                        .eq("id", editingId);
+                    if (error) {
+                        alert("gagal mengupdate: " + (error.message || JSON.stringify(error)));
+                        console.log(error);
+                        return;
+                    }
+                    alert("gift berhasil diupdate");
+                } else {
+                    const { error } = await supabase
+                        .from("gifts")
+                        .insert([gift]);
+                    if (error) {
+                        alert("gagal menyimpan: " + (error.message || JSON.stringify(error)));
+                        console.log(error);
+                        return;
+                    }
+                    alert("gift berhasil dibuat");
+                }
+
+                resetForm();
+                toggleForm();
+                renderGiftList();
+            } catch (e) {
+                alert("Terjadi error: " + (e.message || JSON.stringify(e)));
+                console.error(e);
+            }
         }
 
         // --- EDIT ---

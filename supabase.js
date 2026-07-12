@@ -1,4 +1,14 @@
 const supabaseUrl = 'https://jnrkcyzwxsolazbxjpwy.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpucmtjeXp3eHNvbGF6YnhqcHd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MDYwNTAsImV4cCI6MjA5OTE4MjA1MH0.zBg98EuBQXEgsdu4Xyk6qRBA0Twb6S3JjvNZNisCcR4';
 
-window.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+        window.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    } else {
+        console.error('Supabase library not loaded');
+        window.supabase = null;
+    }
+} catch (e) {
+    console.error('Failed to create Supabase client:', e);
+    window.supabase = null;
+}
