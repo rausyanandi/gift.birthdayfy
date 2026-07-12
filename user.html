@@ -166,18 +166,17 @@
     <script>
         // --- DATA LAYER ---
         async function findGift(name) {
-    if (!name) return null;
+            if (!name) return null;
 
-    const { data, error } = await supabase
-        .from("gifts")
-        .select("*")
-        .ilike("name", name.trim())
-        .single();
+            const { data, error } = await supabase
+                .from("gifts")
+                .select("*")
+                .ilike("name", name.trim())
+                .limit(1);
 
-    if (error) return null;
-
-    return data;
-}
+            if (error || !data || data.length === 0) return null;
+            return data[0];
+        }
 
         // --- SPOTIFY ---
         function convertSpotifyUrl(url) {
